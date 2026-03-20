@@ -15,7 +15,7 @@ if not User.objects.filter(username='admin').exists():
     User.objects.create_superuser('admin', 'admin@example.com', 'admin1234')
 else:
     u = User.objects.get(username='admin')
-    u.set_password('admin1234')
+    u.set_password('Kpefk@2024!')
     u.save()
 print('Superuser ready')
 "
