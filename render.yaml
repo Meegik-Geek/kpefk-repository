@@ -12,6 +12,14 @@ services:
         value: "False"
       - key: SECRET_KEY
         value: "django-insecure-kpefk-repo-repository-secret-2024"
+      - key: CREATE_SUPERUSER
+        value: "True"
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@example.com
+      - key: DJANGO_SUPERUSER_PASSWORD
+        generate: true
       - key: DATABASE_URL
         fromDatabase:
           name: kpefk-db
