@@ -9,14 +9,19 @@ python manage.py migrate
 
 if [ "$CREATE_SUPERUSER" ]; then
   python manage.py shell -c "
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 User = get_user_model()
 if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@example.com', 'admin1234')
+    User.objects.create_superuser('admin', 'admin@example.com', 'Kpefk@2024!')
 else:
     u = User.objects.get(username='admin')
     u.set_password('Kpefk@2024!')
     u.save()
-print('Superuser ready')
+    print('Password updated')
+
+# Перевіряємо чи працює автентифікація
+result = authenticate(username='admin', password='Kpefk@2024!')
+print('Auth result:', result)
+print('Is superuser:', result.is_superuser if result else 'FAILED')
 "
 fi
