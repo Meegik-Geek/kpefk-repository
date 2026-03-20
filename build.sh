@@ -13,11 +13,12 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 u, created = User.objects.get_or_create(username='admin')
 u.email = 'admin@example.com'
-u.is_superuser = True
-u.is_staff = True
 u.is_active = True
+User.objects.filter(pk=u.pk).update(is_staff=True, is_superuser=True)
 u.set_password('Kpefk@2024!')
-u.save()
-print('Done. is_superuser:', u.is_superuser)
+User.objects.filter(pk=u.pk).update(password=u.password)
+from home.models import UserProfile
+UserProfile.objects.filter(user=u).update(role='admin')
+print('Done')
 "
 fi
