@@ -19,7 +19,7 @@ services:
       - key: DJANGO_SUPERUSER_EMAIL
         value: admin@example.com
       - key: DJANGO_SUPERUSER_PASSWORD
-        generate: true
+        value: admin1234
       - key: DATABASE_URL
         fromDatabase:
           name: kpefk-db
