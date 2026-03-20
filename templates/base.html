@@ -1,0 +1,242 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Електронний репозиторій кваліфікаційних та курсових робіт КПЕФК">
+    <title>{% block title %}Репозиторій ВСП "КПЕФК ЛНТУ"{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        /* Search Form Styles */
+        .search-form.advanced {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .search-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .search-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-field label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #004e6f;
+            font-size: 0.95em;
+        }
+
+        .search-field input,
+        .search-field select {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .search-field input:focus,
+        .search-field select:focus {
+            outline: none;
+            border-color: #004e6f;
+            box-shadow: 0 0 0 3px rgba(44, 90, 160, 0.1);
+        }
+
+        .btn-search {
+            padding: 12px 40px;
+            background-color: #004e6f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+            transition: all 0.3s;
+            align-self: flex-start;
+        }
+
+        .btn-search:hover {
+            background-color: #003a53;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(44, 90, 160, 0.3);
+        }
+
+        /* Work Card Link Styles */
+        .work-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #004e6f;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .work-link:hover {
+            color: #003a53;
+            transform: translateX(3px);
+        }
+
+        @media (max-width: 768px) {
+            .search-row {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-search {
+                align-self: stretch;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+
+        /* Footer Styles */
+        footer {
+            background-color: #002a3d;
+            color: #e2e8f0;
+            padding: 40px 0 0 0;
+            margin-top: auto;
+            border-top: 4px solid #007aae;
+        }
+
+        .footer-content {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px 30px;
+            gap: 30px;
+        }
+
+        .footer-section {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .footer-section h4 {
+            color: #edf2f7;
+            font-size: 1.2em;
+            margin-top: 0;
+            margin-bottom: 20px;
+            position: relative;
+            padding-bottom: 10px;
+        }
+
+        .footer-section h4::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 50px;
+            height: 2px;
+            background-color: #007aae;
+        }
+
+        .footer-section p {
+            line-height: 1.6;
+            color: #cbd5e0;
+            margin: 0;
+        }
+
+        .footer-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 12px;
+        }
+
+        .footer-section ul li a {
+            color: #cbd5e0;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-section ul li a:hover {
+            color: #007aae;
+        }
+
+        .footer-bottom {
+            background-color: #001b27;
+            padding: 15px 20px;
+            text-align: center;
+        }
+
+        .footer-bottom p {
+            margin: 0;
+            color: #a0aec0;
+            font-size: 0.9em;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo" style="display: flex; align-items: center; gap: 10px;">
+                <img src="{% static 'img/logo.png' %}" alt="Логотип" style="height: 45px; width: auto; object-fit: contain;">
+                <span>Репозиторій</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/">Головна</a></li>
+                <li><a href="#search">Роботи</a></li>
+
+
+                <li><a href="/admin/" class="btn-admin">Адмін</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Про нас</h4>
+                <p>Електронний репозиторій ВСП "Ковельський промислово-економічний фаховий коледж ЛНТУ" — це відкритий
+                    електронний архів, що накопичує, зберігає та забезпечує доступ до навчальних матеріалів.</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Навігація</h4>
+                <ul>
+                    <li><a href="/">Головна сторінка</a></li>
+                    <li><a href="/#search">Пошук робіт</a></li>
+                    <li><a href="/admin/">Панель адміністрування</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Контакти</h4>
+                <ul>
+                    <li><a href="tel:+380335249737">+38 (033) 524-97-37</a></li>
+                    <li><a href="mailto:info@kpefk.com.ua">info@kpefk.com.ua</a></li>
+                    <li><a href="https://kpefk.com.ua" target="_blank">kpefk.com.ua</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 ВСП "Ковельський промислово-економічний фаховий коледж ЛНТУ". Всі права захищені.</p>
+        </div>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

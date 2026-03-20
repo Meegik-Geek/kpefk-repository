@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Головна - Репозиторій ВСП "КПЕФК ЛНТУ"{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="container">
+        <h1>Електронний репозиторій кваліфікаційних та курсових робіт </h1>
+        <p>Централізована база даних кваліфікаційних та курсових робіт ВСП "КПЕФК ЛНТУ"</p>
+        <a href="#search" class="btn-primary">Переглянути роботи</a>
+        <a href="/admin/" class="btn-secondary">Завантажити роботу</a>
+    </div>
+</section>
+
+<!-- Statistics -->
+<section class="container">
+    <div class="stats-section">
+        <div class="stat-card">
+            <div class="stat-number">{{ qualification_count }}</div>
+            <div class="stat-label">Кваліфікаційних робіт</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ course_count }}</div>
+            <div class="stat-label">Курсових робіт</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ specialties_count }}</div>
+            <div class="stat-label">Спеціальностей</div>
+        </div>
+    </div>
+</section>
+
+<!-- Search Section -->
+<section class="search-section" id="search">
+    <div class="container">
+        <h2>Пошук робіт</h2>
+        <form class="search-form advanced" method="get" action="/#works">
+            <div class="search-row">
+                <div class="search-field">
+                    <label for="specialty">Спеціальність</label>
+                    <select id="specialty" name="specialty" onchange="updateFormFields()">
+                        <option value="">Усі спеціальності</option>
+                        {% for spec in specialties %}
+                        <option value="{{ spec.id }}">{{ spec.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="search-field">
+                    <label for="work_type">Тип роботи</label>
+                    <select id="work_type" name="work_type" onchange="updateFormFields()">
+                        <option value="">Усі типи</option>
+                        <option value="qualification">Кваліфікаційна робота</option>
+                        <option value="course">Курсова робота</option>
+                    </select>
+                </div>
+            </div>
+            <div class="search-row">
+                <div class="search-field" id="field-year">
+                    <label for="year">Рік захисту</label>
+                    <select id="year" name="year">
+                        <option value="">Усі роки</option>
+                        {% for y in years %}
+                        <option value="{{ y }}">{{ y }}</option>
+                        {% endfor %}
+                    </select>
+
+                </div>
+                <div class="search-field" id="field-subject">
+                    <label for="subject">Освітній компонент (Предмет)</label>
+                    <select id="subject" name="subject">
+                        <option value="">Усі предмети</option>
+                        {% for sub in subjects %}
+                        <option value="{{ sub.id }}">{{ sub.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn-search" id="searchBtn" disabled
+                style="opacity: 0.5; cursor: not-allowed;">Пошук</button>
+        </form>
+
+    </div>
+</section>
+
+<!-- Recent Works Section -->
+<section class="works-section" id="works">
+    <div class="container">
+        {% if search_active %}
+        <h2>Результати пошуку</h2>
+        <!-- Quick Table Search -->
+        <div class="table-search-box" style="margin-bottom: 20px;">
+            <input type="text" id="tableSearch" placeholder="Швидкий пошук по таблиці за ключовими словами..."
+                style="width: 100%; padding: 12px 15px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 1rem; transition: border-color 0.3s; outline: none;">
+        </div>
+
+        <!-- Table of Works -->
+        <div class="table-responsive"
+            style="overflow-x: auto; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); border-radius: 8px;">
+            <table class="works-table"
+                style="width: 100%; border-collapse: collapse; background: white; min-width: 800px;">
+                <thead style="background: linear-gradient(135deg, #002a3d 0%, #004e6f 100%); color: white;">
+                    <tr>
+                        <th style="padding: 15px; text-align: left; font-weight: 600;">Назва роботи</th>
+                        <th style="padding: 15px; text-align: left; font-weight: 600;">Тип</th>
+                        <th style="padding: 15px; text-align: left; font-weight: 600;">Виконавець</th>
+                        <th style="padding: 15px; text-align: left; font-weight: 600;">Керівник</th>
+                        <th style="padding: 15px; text-align: left; font-weight: 600;">Рік (Захист)</th>
+                        <th style="padding: 15px; text-align: center; font-weight: 600;">Файл</th>
+                    </tr>
+                </thead>
+                <tbody id="worksTableBody">
+                    {% for work in latest_works %}
+                    <tr class="work-row"
+                        style="border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s; cursor: pointer;"
+                        onclick="toggleAnnotation('desc-{{ work.id }}')" title="Натисніть для перегляду анотації">
+                        <td style="padding: 15px; font-weight: 600; color: #2d3748;">{{ work.title }}</td>
+                        <td style="padding: 15px;">
+                            <span class="work-type {{ work.work_type }}"
+                                style="font-size: 0.85em; padding: 4px 10px; border-radius: 12px; background-color: #edf2f7; color: #4a5568; white-space: nowrap;">
+                                {{ work.get_work_type_display }}
+                                {% if work.work_type == 'course' and work.subject %}
+                                , {{ work.subject.name }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td style="padding: 15px; color: #4a5568;">{{ work.author }}</td>
+                        <td style="padding: 15px; color: #4a5568;">{{ work.supervisor }}</td>
+                        <td style="padding: 15px; color: #4a5568;">{{ work.academic_year }} <br><span
+                                style="font-size: 0.85em; color: #a0aec0;">({{ work.defense_date|date:"d.m.Y" }})</span>
+                        </td>
+                        <td style="padding: 15px; text-align: center;">
+                            {% if work.pdf_file %}
+                            {% if request.user.is_authenticated %}
+                            <a href="{% url 'download_work' work.id %}" target="_blank"
+                                onclick="event.stopPropagation()"
+                                style="display: inline-block; padding: 8px 15px; background-color: #007aae; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9em; font-weight: 600; transition: background-color 0.3s;">Відкрити</a>
+                            {% else %}
+                            <span style="color: #e53e3e; font-size: 0.85em; font-weight: 600;"
+                                title="Тільки для авторизованих">🔒 Вхід</span>
+                            {% endif %}
+                            {% else %}
+                            <span style="color: #a0aec0; font-size: 0.9em;">Немає</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr id="desc-{{ work.id }}" style="display: none; background-color: #f7fafc;">
+                        <td colspan="6"
+                            style="padding: 15px 25px; font-size: 0.95em; color: #4a5568; border-bottom: 2px solid #e2e8f0; line-height: 1.5;">
+                            <strong style="color: #004e6f;">Коротка анотація:</strong><br>
+                            {{ work.description|default:"Анотація відсутня."|linebreaks }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="jsEmptyState" {% if latest_works %}style="display: none;"{% endif %}>
+                        <td colspan="6" style="padding: 40px; text-align: center; color: #718096; font-size: 1.1em;">
+                            За вашим запитом нічого не знайдено.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {% else %}
+
+        <h2>Останні роботи</h2>
+        <div class="works-grid">
+            {% for work in latest_works %}
+            <div class="work-item" style="cursor: pointer; position: relative;"
+                onclick="toggleAnnotation('card-desc-{{ work.id }}')" title="Натисніть для перегляду анотації">
+                <span class="work-type {{ work.work_type }}">
+                    {{ work.get_work_type_display }}
+                    {% if work.work_type == 'course' and work.subject %}
+                    , {{ work.subject.name }}
+                    {% endif %}
+                </span>
+                <h3 class="work-title">{{ work.title }}</h3>
+                <div class="work-meta">
+                    <div class="work-author">Автор: {{ work.author }}</div>
+                    <div class="work-supervisor">Керівник: {{ work.supervisor }}</div>
+                    <div class="work-date">Рік: {{ work.academic_year }} (Захист: {{ work.defense_date|date:"d.m.Y" }})
+                    </div>
+                </div>
+
+                <div id="card-desc-{{ work.id }}"
+                    style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e0; font-size: 0.95em; color: #4a5568; line-height: 1.5;">
+                    <strong style="color: #004e6f;">Коротка анотація:</strong><br>
+                    {{ work.description|default:"Анотація відсутня."|linebreaks }}
+                </div>
+
+                <div style="margin-top: 15px;">
+                    {% if work.pdf_file %}
+                    {% if request.user.is_authenticated %}
+                    <a href="{% url 'download_work' work.id %}" onclick="event.stopPropagation()" class="work-link"
+                        target="_blank" style="font-weight: 600;">Відкрити файл →</a>
+                    {% else %}
+                    <span class="work-link" style="color: #e53e3e; cursor: help;" title="Потрібна авторизація"
+                        onclick="event.stopPropagation()">🔒 Увійдіть для доступу</span>
+                    {% endif %}
+                    {% else %}
+                    <span class="work-link" style="color: gray;">Файл відсутній</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <p style="text-align: center; color: #718096; width: 100%;">
+                В системі ще немає робіт. Адміністратор чи керівники можуть додавати роботи через панель керування.
+            </p>
+            {% endfor %}
+        </div>
+
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateFormFields() {
+        const specialty = document.getElementById('specialty').value;
+        const workType = document.getElementById('work_type').value;
+        const subjectField = document.getElementById('field-subject');
+        const subjectSelect = document.getElementById('subject');
+        const searchBtn = document.getElementById('searchBtn');
+
+        // Перевірка активності кнопки пошуку
+        if (specialty !== '' && workType !== '') {
+            searchBtn.disabled = false;
+            searchBtn.style.opacity = '1';
+            searchBtn.style.cursor = 'pointer';
+        } else {
+            searchBtn.disabled = true;
+            searchBtn.style.opacity = '0.5';
+            searchBtn.style.cursor = 'not-allowed';
+        }
+
+        if (workType === 'qualification') {
+            // Якщо кваліфікаційна: ховаємо предмет
+            subjectField.style.display = 'none';
+            subjectSelect.value = '';
+        } else if (workType === 'course') {
+            // Якщо курсова: показуємо предмет
+            subjectField.style.display = 'flex';
+        } else {
+            // "Усі типи" - показуємо все
+            subjectField.style.display = 'flex';
+        }
+    }
+
+    // Запускаємо логіку при завантаженні сторінки
+    document.addEventListener('DOMContentLoaded', updateFormFields);
+
+    // Швидкий пошук по таблиці
+    document.getElementById('tableSearch')?.addEventListener('input', function () {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#worksTableBody .work-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(filter)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+                
+                // Приховуємо анотацію при фільтрації, якщо вона була відкрита
+                const descRow = row.nextElementSibling;
+                if (descRow && descRow.id && descRow.id.startsWith('desc-')) {
+                    descRow.style.display = 'none';
+                }
+            }
+        });
+        
+        const emptyState = document.getElementById('jsEmptyState');
+        if (emptyState) {
+            emptyState.style.display = (visibleCount === 0) ? 'table-row' : 'none';
+        }
+    });
+
+    // Перемикач для анотацій (акордеон ефект)
+    function toggleAnnotation(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const wasHidden = (el.style.display === 'none');
+
+        // Спершу ховаємо абсолютно всі інші анотації
+        const allDesc = document.querySelectorAll('tr[id^="desc-"], div[id^="card-desc-"]');
+        allDesc.forEach(node => {
+            node.style.display = 'none';
+        });
+
+        // Якщо наш елемент був прихований, показуємо його
+        if (wasHidden) {
+            el.style.display = '';
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+.env
+db.sqlite3
+staticfiles/
+media/
+*.pyc
+__pycache__/
+.vscode/
+.idea/
+venv/
+.DS_Store
+node_modules/
+docker-compose.override.yml
