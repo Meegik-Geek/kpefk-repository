@@ -58,7 +58,7 @@ AUTHENTICATION_BACKENDS = [
 # Налаштування бази даних (використовуємо dj_database_url для Render)
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL', default=f"postgresql://{config('DB_USER')}:{config('DB_PASSWORD')}@{config('DB_HOST')}:{config('DB_PORT')}/{config('DB_NAME')}"),
+        default=config('DATABASE_URL', default=f"postgresql://{config('DB_USER', default='django_user')}:{config('DB_PASSWORD', default='django_password')}@{config('DB_HOST', default='db')}:{config('DB_PORT', default='5432')}/{config('DB_NAME', default='django_db')}"),
         conn_max_age=600
     )
 }
