@@ -1,6 +1,7 @@
 services:
   - type: web
     name: kpefk-repository
+    plan: free
     env: python
     buildCommand: "bash build.sh"
     startCommand: "gunicorn config.wsgi:application"
