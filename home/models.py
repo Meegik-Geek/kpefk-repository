@@ -38,6 +38,14 @@ class Subject(models.Model):
         verbose_name="Назва предмету",
         unique=True
     )
+    specialty = models.ForeignKey(
+        Specialty,
+        on_delete=models.CASCADE,
+        related_name='subjects',
+        verbose_name="Спеціальність",
+        null=True,
+        blank=True
+    )
     description = models.TextField(
         blank=True,
         null=True,
@@ -194,15 +202,27 @@ class UserProfile(models.Model):
         null=True,
         blank=True,
         verbose_name="Спеціальність",
-        help_text="Заповнюється тільки для редактора кваліфікаційних робіт"
+        help_text="Заповнюється для редактора кваліфікаційних робіт або для обмеження Читача конкретною спеціальністю"
     )
     subject = models.ForeignKey(
         Subject,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Предмет",
-        help_text="Заповнюється тільки для редактора курсових робіт"
+        verbose_name="Предмет (основний)",
+        help_text="Заповнюється для редактора курсових робіт (як основний)"
+    )
+    subjects = models.ManyToManyField(
+        Subject,
+        blank=True,
+        related_name='editor_profiles',
+        verbose_name="Дозволені предмети",
+        help_text="Для редактора курсових робіт або Читача: виберіть усі предмети, до яких дозволено доступ"
+    )
+    also_course_editor = models.BooleanField(
+        default=False,
+        verbose_name="Також є редактором курсових робіт",
+        help_text="Якщо увімкнено, користувач (наприклад, Редактор КР) зможе також редагувати курсові роботи за вибраними предметами"
     )
 
     class Meta:
@@ -222,12 +242,8 @@ class UserProfile(models.Model):
             user.is_staff = True
             user.is_superuser = True
             changed = True
-        elif self.role in ['qualification_editor', 'course_editor'] and (not user.is_staff or user.is_superuser):
+        elif self.role in ['qualification_editor', 'course_editor', 'viewer'] and (not user.is_staff or user.is_superuser):
             user.is_staff = True
-            user.is_superuser = False
-            changed = True
-        elif self.role == 'viewer' and (user.is_staff or user.is_superuser):
-            user.is_staff = False
             user.is_superuser = False
             changed = True
             

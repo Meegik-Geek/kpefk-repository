@@ -1,3 +1,4 @@
+from django.db import models
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -149,10 +150,26 @@ class WorkAdmin(admin.ModelAdmin):
             
         profile = getattr(request.user, 'profile', None)
         if profile:
-            if profile.role == 'qualification_editor' and profile.specialty:
-                return qs.filter(work_type='qualification', specialty=profile.specialty)
-            elif profile.role == 'course_editor' and profile.subject:
-                return qs.filter(work_type='course', subject=profile.subject)
+            if profile.role == 'qualification_editor':
+                from django.db.models import Q
+                q_filter = Q(work_type='qualification', specialty=profile.specialty)
+                
+                # Автоматичний гібридний режим, якщо вибрані предмети
+                has_assigned_subjects = profile.subject_id or profile.subjects.exists()
+                if has_assigned_subjects:
+                    subjects_ids = list(profile.subjects.values_list('pk', flat=True))
+                    if profile.subject:
+                        subjects_ids.append(profile.subject.pk)
+                    q_filter |= Q(work_type='course', subject_id__in=subjects_ids)
+                
+                return qs.filter(q_filter)
+                
+            elif profile.role == 'course_editor':
+                from django.db.models import Q
+                subjects_ids = list(profile.subjects.values_list('pk', flat=True))
+                if profile.subject:
+                    subjects_ids.append(profile.subject.pk)
+                return qs.filter(work_type='course', subject_id__in=subjects_ids)
                 
         return qs.none()
 
@@ -162,26 +179,73 @@ class WorkAdmin(admin.ModelAdmin):
         if not request.user.is_superuser:
             profile = getattr(request.user, 'profile', None)
             if profile:
+                # Збираємо всі доступні спеціальності: основна + спеціальності обраних предметів
+                available_specialties_ids = []
+                if profile.specialty:
+                    available_specialties_ids.append(profile.specialty.id)
+                
+                subjects_ids = list(profile.subjects.values_list('pk', flat=True))
+                if profile.subject:
+                    subjects_ids.append(profile.subject.pk)
+                
+                # Додаємо спеціальності, до яких належать ці предмети
+                subject_specialties = Subject.objects.filter(id__in=subjects_ids, specialty__isnull=False).values_list('specialty_id', flat=True)
+                available_specialties_ids.extend(list(subject_specialties))
+                
+                # Прибираємо дублікати
+                available_specialties_ids = list(set(available_specialties_ids))
+
                 if profile.role == 'qualification_editor':
-                    # Дозволяємо тільки кваліфікаційні
-                    form.base_fields['work_type'].choices = [('qualification', 'Кваліфікаційна робота (дипломний проєкт)')]
-                    form.base_fields['work_type'].initial = 'qualification'
+                    # Завжди дозволяємо кваліфікаційні
+                    can_do_course = bool(subjects_ids)
                     
-                    if profile.specialty:
-                        form.base_fields['specialty'].queryset = Specialty.objects.filter(id=profile.specialty.id)
-                        form.base_fields['specialty'].initial = profile.specialty
-                        form.base_fields['specialty'].empty_label = None # Обов'язково вибрати свою спец.
+                    if can_do_course:
+                        form.base_fields['work_type'].choices = [
+                            ('qualification', 'Кваліфікаційна робота (дипломний проєкт)'),
+                            ('course', 'Курсова робота (проєкт)')
+                        ]
+                    else:
+                        form.base_fields['work_type'].choices = [('qualification', 'Кваліфікаційна робота (дипломний проєкт)')]
+                        form.base_fields['work_type'].initial = 'qualification'
+                    
+                    if available_specialties_ids:
+                        form.base_fields['specialty'].queryset = Specialty.objects.filter(id__in=available_specialties_ids)
+                        if profile.specialty:
+                            form.base_fields['specialty'].initial = profile.specialty
+                        form.base_fields['specialty'].empty_label = None
                         
+                    # Якщо гібрид — фільтруємо предмети
+                    if can_do_course:
+                        form.base_fields['subject'].queryset = Subject.objects.filter(id__in=subjects_ids)
+                    else:
+                        form.base_fields['subject'].queryset = Subject.objects.none()
+
                 elif profile.role == 'course_editor':
-                    # Дозволяємо тільки курсові
                     form.base_fields['work_type'].choices = [('course', 'Курсова робота (проєкт)')]
                     form.base_fields['work_type'].initial = 'course'
                     
-                    if profile.subject:
-                        form.base_fields['subject'].queryset = Subject.objects.filter(id=profile.subject.id)
-                        form.base_fields['subject'].initial = profile.subject
-                        form.base_fields['subject'].empty_label = None # Обов'язково вибрати свій предмет
+                    if subjects_ids:
+                        form.base_fields['subject'].queryset = Subject.objects.filter(id__in=subjects_ids)
+                        form.base_fields['subject'].empty_label = "--- Виберіть предмет ---"
+                    else:
+                        form.base_fields['subject'].queryset = Subject.objects.none()
+                        
+                    if available_specialties_ids:
+                         form.base_fields['specialty'].queryset = Specialty.objects.filter(id__in=available_specialties_ids)
+                         if profile.specialty:
+                             form.base_fields['specialty'].initial = profile.specialty
+                         form.base_fields['specialty'].empty_label = None
         return form
+
+    # 3. Автоматичне встановлення спеціальності при збереженні (Backend safety)
+    def save_model(self, request, obj, form, change):
+        if obj.work_type == 'course' and obj.subject and obj.subject.specialty:
+            obj.specialty = obj.subject.specialty
+        super().save_model(request, obj, form, change)
+
+    # 4. JavaScript для автоматичної зміни спеціальності при виборі предмета
+    class Media:
+        js = ('admin/js/work_specialty_sync.js',)
 
     # 3. Перевизначення дозволів, щоб редактори могли бачити та редагувати модуль
     def has_module_permission(self, request):
@@ -314,18 +378,19 @@ class WorkDeletionAdmin(admin.ModelAdmin):
 # --- Subject ---
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'course_work_count')
+    list_display = ('name', 'specialty', 'course_work_count')
+    list_filter = ('specialty',)
     search_fields = ('name',)
     ordering = ('name',)
 
     fieldsets = (
         ('Форма предмету', {
-            'fields': ('name', 'description')
+            'fields': ('name', 'specialty', 'description')
         }),
     )
 
     def course_work_count(self, obj):
-        count = UserProfile.objects.filter(subject=obj).count()
+        count = UserProfile.objects.filter(models.Q(subject=obj) | models.Q(subjects=obj)).distinct().count()
         return format_html(
             '<span style="background-color: #79aec8; color: white; padding: 3px 8px; border-radius: 3px;">{} користувачів</span>',
             count
@@ -339,7 +404,8 @@ class UserProfileInline(admin.StackedInline):
     can_delete = False
     verbose_name = 'Профіль користувача'
     verbose_name_plural = 'Профіль користувача'
-    fields = ('role', 'specialty', 'subject')
+    fields = ('role', 'specialty', 'subject', 'subjects', 'also_course_editor')
+    filter_horizontal = ('subjects',)
     extra = 0
 
 
@@ -349,7 +415,8 @@ class UserAdmin(BaseUserAdmin):
     add_form = EmailRequiredUserCreationForm
     inlines = (UserProfileInline,)
 
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'password_reset_link')
+    readonly_fields = ('password_reset_link',)
 
     add_fieldsets = (
         ('Створення користувача', {
@@ -359,11 +426,22 @@ class UserAdmin(BaseUserAdmin):
     )
 
     fieldsets = (
-        ('Основні дані', {'fields': ('email', 'username', 'password')}),
+        ('Основні дані', {'fields': ('email', 'username', 'password', 'password_reset_link')}),
         ('Персональна інформація', {'fields': ('first_name', 'last_name')}),
-        ('Дозволи', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        ('Дати', {'fields': ('last_login', 'date_joined')}),
+        ('Дозволи', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
     )
+
+    def password_reset_link(self, obj):
+        if obj.pk:
+            from django.urls import reverse
+            url = reverse('admin:auth_user_password_change', args=[obj.pk])
+            return format_html(
+                '<a class="button" href="{}" style="background: #e67e22; color: #fff; padding: 5px 15px; border-radius: 4px; font-weight: bold; text-decoration: none;">'
+                'Створити новий пароль</a>', 
+                url
+            )
+        return "Збережіть користувача, щоб змінити пароль"
+    password_reset_link.short_description = "Дія з паролем"
 
     def get_inline_instances(self, request, obj=None):
         if not obj:
@@ -378,8 +456,8 @@ admin.site.register(User, UserAdmin)
 # --- Standalone UserProfile admin ---
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user_username', 'user_full_name', 'role_badge', 'specialty', 'subject')
-    list_filter = ('role', 'specialty', 'subject')
+    list_display = ('user_username', 'user_full_name', 'role_badge', 'specialty', 'subjects_list')
+    list_filter = ('role', 'specialty')
     search_fields = ('user__username', 'user__first_name', 'user__last_name')
     ordering = ('user__username',)
 
@@ -388,9 +466,14 @@ class UserProfileAdmin(admin.ModelAdmin):
             'fields': ('user',)
         }),
         ('Роль та доступ', {
-            'fields': ('role', 'specialty', 'subject')
+            'fields': ('role', 'specialty', 'subject', 'subjects', 'also_course_editor')
         }),
     )
+    filter_horizontal = ('subjects',)
+
+    def subjects_list(self, obj):
+        return ", ".join([s.name for s in obj.subjects.all()])
+    subjects_list.short_description = 'Предмети (всі)'
 
     def user_username(self, obj):
         return obj.user.username

@@ -1,0 +1,81 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+<div id="content-main" style="float: none; width: 100%;">
+    <div class="module"
+        style="padding: 20px; margin-bottom: 30px; background: var(--body-bg, #fff); border: 1px solid var(--hairline-color, #eee); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <h2
+            style="margin: 0 0 15px 0; color: var(--primary, #447e9b); border-bottom: 2px solid var(--primary, #447e9b); padding-bottom: 10px;">
+            <i class="fas fa-info-circle"></i> Інформація про ваш доступ
+        </h2>
+
+        <div style="font-size: 1.1em; line-height: 1.6;">
+            {% if user.is_superuser %}
+            <p><strong>Ваш статус:</strong>
+                <span style="color: #2e7d32; font-weight: bold;">✅ Адміністратор (Повний доступ до всіх функцій)</span>
+            </p>
+            {% elif user.profile %}
+            <p><strong>Ваша роль у системі:</strong>
+                <span class="tag" style="background: #e1f5fe; color: #01579b; padding: 2px 8px; border-radius: 4px;">{{ user.profile.get_role_display }}</span>
+                {% if user.profile.role == 'qualification_editor' and user.profile.also_course_editor %}
+                    <span class="tag" style="background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 4px;">+ Редактор курсових робіт</span>
+                {% endif %}
+            </p>
+
+            <p><strong>Дозволений перегляд:</strong>
+                <ul style="margin: 5px 0 15px 20px;">
+                    {% if user.profile.specialty and user.profile.role != 'course_editor' %}
+                        <li>Спеціальність: <strong>{{ user.profile.specialty }}</strong></li>
+                    {% endif %}
+                    
+                    {# Перевірка на предмети (основний + додаткові) #}
+                    {% if user.profile.role == 'course_editor' or user.profile.role == 'viewer' or user.profile.also_course_editor %}
+                        {% if user.profile.subject or user.profile.subjects.exists %}
+                            <li>Предмети: 
+                                <strong>
+                                    {% if user.profile.subject %}{{ user.profile.subject }}{% endif %}
+                                    {% if user.profile.subject and user.profile.subjects.exists %}, {% endif %}
+                                    {% for s in user.profile.subjects.all %}
+                                        {{ s.name }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </strong>
+                            </li>
+                        {% elif user.profile.role == 'qualification_editor' and not user.profile.also_course_editor %}
+                            {# Для звичайного редактора КР предмети не виводимо #}
+                        {% else %}
+                            <li><span style="color: #2e7d32;">✅ Повний доступ до всіх предметів</span></li>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if user.profile.role == 'viewer' and not user.profile.specialty and not user.profile.subject and not user.profile.subjects.exists %}
+                        <li><span style="color: #2e7d32;">✅ Повний доступ до всього репозиторію</span></li>
+                    {% endif %}
+                </ul>
+            </p>
+            {% endif %}
+
+            <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--hairline-color, #eee);">
+                <p style="margin-bottom: 15px; font-style: italic; color: #666;">
+                    Ви можете переглядати та завантажувати дозволені PDF-файли на головній сторінці репозиторію.
+                </p>
+                <a href="/" class="button"
+                    style="display: inline-block; padding: 12px 24px; background: #417690; color: #fff; text-decoration: none; border-radius: 4px; font-weight: bold; transition: background 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    Перейти на головну сторінку репозиторію
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Показуємо стандартний список програм ТІЛЬКИ для суперкористувачів або редакторів #}
+{% if user.is_superuser or user.profile.role != 'viewer' %}
+{{ block.super }}
+{% endif %}
+{% endblock %}
+
+{% block sidebar %}
+{# Приховуємо сайдбар "Недавні дії" для Читачів #}
+{% if user.is_superuser or user.profile.role != 'viewer' %}
+{{ block.super }}
+{% endif %}
+{% endblock %}
